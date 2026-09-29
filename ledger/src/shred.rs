@@ -727,6 +727,18 @@ unsafe impl<'a, C: ConfigCore> SchemaRead<'a, C> for ShredVariant {
     }
 }
 
+pub fn recover<T: IntoIterator<Item = Shred>>(
+    shreds: T,
+    reed_solomon_cache: &ReedSolomonCache,
+) -> Result<impl Iterator<Item = Result<Shred, Error>> + use<T>, Error> {
+    let shreds = shreds
+        .into_iter()
+        .map(merkle::Shred::try_from)
+        .collect::<Result<_, _>>()?;
+    let shreds = merkle::recover(shreds, reed_solomon_cache)?;
+    Ok(shreds.map(|shred| shred.map(Shred::from)))
+}
+
 pub fn max_ticks_per_n_shreds(num_shreds: u64, shred_data_size: Option<usize>) -> u64 {
     let ticks = create_ticks(1, 0, Hash::default());
     max_entries_per_n_shred(&ticks[0], num_shreds, shred_data_size)
